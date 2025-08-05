@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CIDR Subnetting Practice</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #1e1e2f;
+      color: white;
+      padding: 20px;
+    }
+    table {
+      margin: auto;
+      border-collapse: collapse;
+      width: 90%;
+    }
+    th, td {
+      padding: 8px;
+      text-align: center;
+      border: 1px solid #444;
+    }
+    input {
+      width: 100%;
+      padding: 5px;
+      text-align: center;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .correct {
+      background-color: #c8f7c5;
+    }
+    .wrong {
+      background-color: #f7c5c5;
+    }
+    #checkBtn {
+      margin: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    .happy {
+      font-size: 18px;
+      margin-left: 8px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<h1 style="text-align:center;">CIDR Subnetting Practice</h1>
+<table id="subnetTable">
+  <thead>
+    <tr>
+      <th>IP/CIDR</th>
+      <th>Subnet Mask <span class="happy">😊</span></th>
+      <th>Network Address <span class="happy">😊</span></th>
+      <th>Broadcast Address <span class="happy">😊</span></th>
+      <th>First Host <span class="happy">😊</span></th>
+      <th>Last Host <span class="happy">😊</span></th>
+      <th># of Hosts <span class="happy">😊</span></th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+<div style="text-align:center;">
+  <button id="checkBtn">Check Answers</button>
+</div>
+
+<script>
+function getRandomIp() {
+  return `${Math.floor(Math.random() * 223) + 1}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.0`;
+}
+
+function cidrToMask(cidr) {
+  let mask = [];
+  for (let i = 0; i < 4; i++) {
+    if (cidr >= 8) {
+      mask.push(255);
+      cidr -= 8;
+    } else {
+      mask.push(256 - Math.pow(2, 8 - cidr));
+      cidr = 0;
+    }
+  }
+  return mask.join('.');
+}
+
+function ipToInt(ip) {
+  return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet), 0) >>> 0;
+}
+
+function intToIp(int) {
+  return [(int >>> 24), (int >> 16 & 255), (int >> 8 & 255), (int & 255)].join('.');
+}
+
+function subnetCalc(ip, cidr) {
+  const maskInt = ipToInt(cidrToMask(cidr));
+  const ipInt = ipToInt(ip);
+  const network = ipInt & maskInt;
+  const broadcast = network | (~maskInt >>> 0);
+  const totalHosts = cidr === 31 ? 2 : cidr === 32 ? 1 : Math.pow(2, 32 - cidr) - 2;
+  return {
+    subnetMask: cidrToMask(cidr),
+    network: intToIp(network),
+    broadcast: intToIp(broadcast),
+    firstHost: totalHosts < 1 ? 'N/A' : intToIp(network + 1),
+    lastHost: totalHosts < 1 ? 'N/A' : intToIp(broadcast - 1),
+    hosts: totalHosts
+  };
+}
+
+function createRow(ip, cidr, index) {
+  const data = subnetCalc(ip, cidr);
+  const row = document.createElement('tr');
+  row.dataset.index = index;
+  row.dataset.answer = JSON.stringify(data);
+  row.innerHTML = `
+    <td>${ip}/${cidr}</td>
+    <td><input /></td>
+    <td><input /></td>
+    <td><input /></td>
+    <td><input /></td>
+    <td><input /></td>
+    <td><input /></td>
+  `;
+  return row;
+}
+
+function generateTable() {
+  const tbody = document.querySelector("#subnetTable tbody");
+  tbody.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const ip = getRandomIp();
+    const cidr = Math.floor(Math.random() * 7) + 24; // CIDR /24 to /30
+    tbody.appendChild(createRow(ip, cidr, i));
+  }
+}
+
+function checkAnswers() {
+  let allCorrect = true;
+  const rows = document.querySelectorAll("#subnetTable tbody tr");
+
+  rows.forEach(row => {
+    const answer = JSON.parse(row.dataset.answer);
+    const inputs = row.querySelectorAll('input');
+
+    const userValues = [
+      'subnetMask',
+      'network',
+      'broadcast',
+      'firstHost',
+      'lastHost',
+      'hosts'
+    ];
+
+    inputs.forEach((input, idx) => {
+      const correct = answer[userValues[idx]].toString();
+      if (input.value.trim() === correct) {
+        input.className = 'correct';
+      } else {
+        input.className = 'wrong';
+        allCorrect = false;
+      }
+    });
+  });
+
+  const smiles = document.querySelectorAll('.happy');
+  smiles.forEach(smile => smile.style.display = allCorrect ? 'inline' : 'none');
+}
+
+document.getElementById("checkBtn").addEventListener("click", checkAnswers);
+generateTable();
+</script>
+
+</body>
+</html>
